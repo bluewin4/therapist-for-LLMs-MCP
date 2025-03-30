@@ -65,7 +65,7 @@ class MCPFactory:
             client_config.update(config)
         
         # Create the client
-        client = MCPClient(server_url=server_url, api_key=api_key, config=client_config)
+        client = MCPClient(server_url=server_url)
         
         # Initialize the connection
         try:
@@ -141,7 +141,18 @@ class MCPFactory:
         Returns:
             Initialized therapy prompt manager
         """
-        return TherapyPromptManager(client)
+        # Create a prompt manager without calling __init__
+        prompt_manager = TherapyPromptManager.__new__(TherapyPromptManager)
+        
+        # Initialize basic attributes
+        prompt_manager.mcp_client = client
+        prompt_manager.prompts = {}
+        prompt_manager.logger = logger
+        
+        # Register default prompts
+        await prompt_manager._register_default_prompts()
+        
+        return prompt_manager
     
     @staticmethod
     async def create_sampling_manager(

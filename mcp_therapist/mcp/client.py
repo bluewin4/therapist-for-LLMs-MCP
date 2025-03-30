@@ -170,7 +170,8 @@ class MCPPrompt:
         name: str,
         template: str,
         parameters: Dict[str, Any] = None,
-        metadata: Dict[str, Any] = None
+        metadata: Dict[str, Any] = None,
+        description: str = None
     ):
         """
         Initialize an MCP prompt template.
@@ -181,12 +182,14 @@ class MCPPrompt:
             template: The prompt template with parameter placeholders
             parameters: Parameter schema for the prompt
             metadata: Additional metadata for the prompt
+            description: Description of what the prompt does
         """
         self.id = id
         self.name = name
         self.template = template
         self.parameters = parameters or {}
         self.metadata = metadata or {}
+        self.description = description or name  # Use name as fallback description
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert the prompt to a dictionary for JSON serialization."""
@@ -195,7 +198,8 @@ class MCPPrompt:
             "name": self.name,
             "template": self.template,
             "parameters": self.parameters,
-            "metadata": self.metadata
+            "metadata": self.metadata,
+            "description": self.description
         }
     
     def render(self, params: Dict[str, Any]) -> str:

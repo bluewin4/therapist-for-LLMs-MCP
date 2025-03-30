@@ -28,7 +28,9 @@ class RefusalDetector(BaseDetector):
         """
         super().__init__()
         self.min_messages = min_messages
-        self.refusal_keywords = refusal_keywords or settings.REFUSAL_KEYWORDS
+        # Use the new dataclass-based settings structure
+        default_keywords = ["cannot", "unable", "not allowed", "not permitted", "policy", "I'm sorry"]
+        self.refusal_keywords = refusal_keywords or settings.detectors.patterns.get("refusal", default_keywords)
         
         # Compile patterns for better performance
         self.refusal_patterns = [

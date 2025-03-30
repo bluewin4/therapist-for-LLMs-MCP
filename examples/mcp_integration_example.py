@@ -33,31 +33,31 @@ def create_sample_conversation():
                 id=str(uuid.uuid4()),
                 role="user",
                 content="I've been feeling really stressed lately with work.",
-                timestamp=datetime.now().isoformat()
+                timestamp=datetime.now().timestamp()
             ),
             Message(
                 id=str(uuid.uuid4()),
                 role="assistant",
                 content="I'm sorry to hear that you're feeling stressed with work. What aspects of your work are causing the most stress?",
-                timestamp=datetime.now().isoformat()
+                timestamp=datetime.now().timestamp()
             ),
             Message(
                 id=str(uuid.uuid4()),
                 role="user",
                 content="It's just so much pressure all the time. I can't handle it.",
-                timestamp=datetime.now().isoformat()
+                timestamp=datetime.now().timestamp()
             ),
             Message(
                 id=str(uuid.uuid4()),
                 role="assistant",
                 content="That sounds really challenging. Constant pressure can be overwhelming. Are there specific situations at work that feel particularly stressful?",
-                timestamp=datetime.now().isoformat()
+                timestamp=datetime.now().timestamp()
             ),
             Message(
                 id=str(uuid.uuid4()),
                 role="user",
                 content="Just deadlines and expectations. It's too much pressure. I'm constantly anxious about it.",
-                timestamp=datetime.now().isoformat()
+                timestamp=datetime.now().timestamp()
             )
         ],
         metadata={}
@@ -236,7 +236,7 @@ async def main():
             id=str(uuid.uuid4()),
             role="assistant",
             content=response,
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().timestamp()
         )
         
         # Add it to the conversation

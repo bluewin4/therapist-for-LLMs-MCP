@@ -27,34 +27,31 @@ class TherapyPromptManager:
         Initialize the therapy prompt manager.
         
         Args:
-            mcp_client: The MCP client to register prompts with
+            mcp_client: MCP client instance
         """
         self.mcp_client = mcp_client
+        self.prompts: Dict[str, MCPPrompt] = {}
         self.logger = logger
-        self.prompts = {}
-        
-        # Register default prompts
-        self._register_default_prompts()
     
-    def _register_default_prompts(self):
+    async def _register_default_prompts(self):
         """Register the default set of therapy prompts."""
         # Intervention prompts
-        self._register_intervention_prompts()
+        await self._register_intervention_prompts()
         
         # Rut detection prompts
-        self._register_rut_detection_prompts()
+        await self._register_rut_detection_prompts()
         
         # Therapy session prompts
-        self._register_therapy_session_prompts()
+        await self._register_therapy_session_prompts()
     
-    def _register_intervention_prompts(self):
+    async def _register_intervention_prompts(self):
         """Register prompts related to interventions."""
         # Register prompt for direct interventions
-        self._register_prompt(
+        await self._register_prompt(
             MCPPrompt(
                 id="direct_intervention",
                 name="Direct Intervention",
-                description="Template for direct interventions in conversations",
+                description="A prompt to directly intervene in the conversation to break a pattern",
                 template="""
                 I've noticed that our conversation may be getting stuck in a pattern. 
                 {intervention_content}
@@ -70,16 +67,17 @@ class TherapyPromptManager:
                         }
                     },
                     "required": ["intervention_content"]
-                }
+                },
+                metadata={"type": "intervention", "subtype": "direct"}
             )
         )
         
         # Register prompt for self-reflection interventions
-        self._register_prompt(
+        await self._register_prompt(
             MCPPrompt(
                 id="self_reflection_intervention",
                 name="Self-Reflection Intervention",
-                description="Template for self-reflection prompts for assistants",
+                description="A prompt for the assistant to perform self-reflection on conversation patterns",
                 template="""
                 [Self-Reflection]
                 I need to consider how to address the following pattern in our conversation:
@@ -120,16 +118,17 @@ class TherapyPromptManager:
                         }
                     },
                     "required": ["rut_type", "analysis"]
-                }
+                },
+                metadata={"type": "intervention", "subtype": "self_reflection"}
             )
         )
         
         # Register prompt for inline interventions
-        self._register_prompt(
+        await self._register_prompt(
             MCPPrompt(
                 id="inline_intervention",
                 name="Inline Intervention",
-                description="Template for inline interventions that are inserted into messages",
+                description="A prompt to insert an intervention within the existing message",
                 template="{message_start} {intervention_content} {message_end}",
                 parameters={
                     "type": "object",
@@ -148,16 +147,17 @@ class TherapyPromptManager:
                         }
                     },
                     "required": ["message_start", "intervention_content", "message_end"]
-                }
+                },
+                metadata={"type": "intervention", "subtype": "inline"}
             )
         )
         
         # Register prompt for prepend interventions
-        self._register_prompt(
+        await self._register_prompt(
             MCPPrompt(
                 id="prepend_intervention",
                 name="Prepend Intervention",
-                description="Template for interventions that are prepended to messages",
+                description="A prompt to add intervention content before the original message",
                 template="{intervention_content}\n\n{original_message}",
                 parameters={
                     "type": "object",
@@ -172,18 +172,19 @@ class TherapyPromptManager:
                         }
                     },
                     "required": ["intervention_content", "original_message"]
-                }
+                },
+                metadata={"type": "intervention", "subtype": "prepend"}
             )
         )
     
-    def _register_rut_detection_prompts(self):
+    async def _register_rut_detection_prompts(self):
         """Register prompts related to rut detection."""
         # Register prompt for circular reasoning analysis
-        self._register_prompt(
+        await self._register_prompt(
             MCPPrompt(
                 id="circular_reasoning_analysis",
                 name="Circular Reasoning Analysis",
-                description="Template for analyzing circular reasoning patterns",
+                description="A prompt to analyze conversation for circular reasoning patterns",
                 template="""
                 I'm analyzing the following conversation for circular reasoning patterns:
                 
@@ -205,16 +206,17 @@ class TherapyPromptManager:
                         }
                     },
                     "required": ["conversation_excerpt"]
-                }
+                },
+                metadata={"type": "analysis", "subtype": "circular_reasoning"}
             )
         )
         
         # Register prompt for repetitive question analysis
-        self._register_prompt(
+        await self._register_prompt(
             MCPPrompt(
                 id="repetitive_question_analysis",
                 name="Repetitive Question Analysis",
-                description="Template for analyzing repetitive question patterns",
+                description="A prompt to analyze conversation for repetitive questioning patterns",
                 template="""
                 I'm analyzing the following conversation for repetitive questioning patterns:
                 
@@ -236,26 +238,26 @@ class TherapyPromptManager:
                         }
                     },
                     "required": ["conversation_excerpt"]
-                }
+                },
+                metadata={"type": "analysis", "subtype": "repetitive_question"}
             )
         )
         
         # Register prompt for shallow engagement analysis
-        self._register_prompt(
+        await self._register_prompt(
             MCPPrompt(
                 id="shallow_engagement_analysis",
                 name="Shallow Engagement Analysis",
-                description="Template for analyzing shallow engagement patterns",
+                description="A prompt to analyze conversation for shallow engagement patterns",
                 template="""
                 I'm analyzing the following conversation for shallow engagement patterns:
                 
                 {conversation_excerpt}
                 
-                I'll evaluate:
-                1. Depth of user responses (word count, complexity, substantive content)
-                2. Level of personal disclosure or reflection
-                3. Willingness to engage with questions or suggestions
-                4. Signs of passive or minimal participation
+                I'll identify:
+                1. Responses that avoid addressing key points
+                2. Generic or vague answers that don't advance discussion
+                3. Patterns of deflection or minimal engagement
                 
                 Analysis:
                 """,
@@ -268,155 +270,105 @@ class TherapyPromptManager:
                         }
                     },
                     "required": ["conversation_excerpt"]
-                }
+                },
+                metadata={"type": "analysis", "subtype": "shallow_engagement"}
             )
         )
     
-    def _register_therapy_session_prompts(self):
+    async def _register_therapy_session_prompts(self):
         """Register prompts related to therapy sessions."""
         # Register prompt for session introduction
-        self._register_prompt(
+        await self._register_prompt(
             MCPPrompt(
                 id="session_introduction",
                 name="Therapy Session Introduction",
-                description="Template for introducing a therapy session",
+                description="A prompt for introducing a new therapy session",
                 template="""
-                Hello{user_name_greeting}! Welcome to our {session_number} session together.
+                Welcome to our session today. I'm here to support you in exploring your thoughts and feelings.
                 
-                {if_first_session}Before we begin, I want to remind you that I'm here to support you in a safe, confidential space. While I can offer guidance based on therapeutic principles, I'm not a licensed therapist, and our conversations are not a substitute for professional mental health support.{endif_first_session}
+                {custom_welcome_message}
                 
-                {if_continuation}Last time, we discussed {previous_topics}. How have things been since our last conversation?{endif_continuation}
-                
-                {if_specific_goal}You mentioned wanting to focus on {specific_goal} today. Would you like to start there, or is there something else on your mind?{endif_specific_goal}
-                
-                {if_no_specific_goal}What would you like to focus on in our conversation today?{endif_no_specific_goal}
+                What would you like to talk about today?
                 """,
                 parameters={
                     "type": "object",
                     "properties": {
-                        "user_name": {
+                        "custom_welcome_message": {
                             "type": "string",
-                            "description": "The user's name (optional)"
-                        },
-                        "session_number": {
-                            "type": "string",
-                            "description": "Ordinal number of the session (e.g., 'first', 'second')"
-                        },
-                        "is_first_session": {
-                            "type": "boolean",
-                            "description": "Whether this is the first session"
-                        },
-                        "is_continuation": {
-                            "type": "boolean",
-                            "description": "Whether this is a continuation of previous sessions"
-                        },
-                        "previous_topics": {
-                            "type": "string",
-                            "description": "Summary of topics from previous sessions"
-                        },
-                        "specific_goal": {
-                            "type": "string",
-                            "description": "Specific goal or topic for this session (optional)"
+                            "description": "Customized welcome message based on user history"
                         }
                     },
-                    "required": ["session_number"]
-                }
+                    "required": []
+                },
+                metadata={"type": "session", "subtype": "introduction"}
             )
         )
         
         # Register prompt for session conclusion
-        self._register_prompt(
+        await self._register_prompt(
             MCPPrompt(
                 id="session_conclusion",
                 name="Therapy Session Conclusion",
-                description="Template for concluding a therapy session",
+                description="A prompt for concluding a therapy session",
                 template="""
-                As we wrap up our conversation for today, I'd like to summarize what we've discussed:
+                We're coming to the end of our session. 
                 
                 {session_summary}
                 
-                Key insights:
-                {key_insights}
+                {next_steps}
                 
-                {if_action_items}Some things you might consider before our next conversation:
-                {action_items}{endif_action_items}
-                
-                {if_next_session}I look forward to our next conversation. Feel free to reflect on what we've discussed today in the meantime.{endif_next_session}
-                
-                Is there anything else you'd like to discuss before we conclude?
+                Is there anything else you'd like to address before we conclude?
                 """,
                 parameters={
                     "type": "object",
                     "properties": {
                         "session_summary": {
                             "type": "string",
-                            "description": "Summary of the current session"
+                            "description": "Brief summary of the session"
                         },
-                        "key_insights": {
+                        "next_steps": {
                             "type": "string",
-                            "description": "Key insights or breakthroughs from the session"
-                        },
-                        "has_action_items": {
-                            "type": "boolean",
-                            "description": "Whether there are action items to recommend"
-                        },
-                        "action_items": {
-                            "type": "string",
-                            "description": "Suggested action items or reflections"
-                        },
-                        "has_next_session": {
-                            "type": "boolean",
-                            "description": "Whether a next session is planned"
+                            "description": "Suggested next steps or focus areas"
                         }
                     },
                     "required": ["session_summary"]
-                }
+                },
+                metadata={"type": "session", "subtype": "conclusion"}
             )
         )
         
         # Register prompt for empathetic response
-        self._register_prompt(
+        await self._register_prompt(
             MCPPrompt(
                 id="empathetic_response",
                 name="Empathetic Response",
-                description="Template for generating empathetic responses to user disclosures",
+                description="A prompt for generating an empathetic response to emotional content",
                 template="""
-                I can hear that {emotional_content}. That sounds {emotion_description}.
+                I can sense that {emotional_content}. That sounds really challenging.
                 
                 {validation_statement}
                 
-                {if_exploration}What aspect of this {exploration_question}{endif_exploration}
+                Would you like to explore this feeling more deeply?
                 """,
                 parameters={
                     "type": "object",
                     "properties": {
                         "emotional_content": {
                             "type": "string",
-                            "description": "Summary of the emotional content shared"
-                        },
-                        "emotion_description": {
-                            "type": "string",
-                            "description": "Description of the emotion (e.g., 'challenging', 'painful')"
+                            "description": "Description of the emotional state detected"
                         },
                         "validation_statement": {
                             "type": "string",
                             "description": "Statement validating the user's experience"
-                        },
-                        "should_explore": {
-                            "type": "boolean",
-                            "description": "Whether to include an exploration question"
-                        },
-                        "exploration_question": {
-                            "type": "string",
-                            "description": "Question to explore the topic further"
                         }
                     },
                     "required": ["emotional_content", "validation_statement"]
-                }
+                },
+                metadata={"type": "response", "subtype": "empathetic"}
             )
         )
     
-    def _register_prompt(self, prompt: MCPPrompt):
+    async def _register_prompt(self, prompt: MCPPrompt):
         """
         Register a prompt in the internal registry and with the MCP client.
         
@@ -424,7 +376,7 @@ class TherapyPromptManager:
             prompt: The prompt to register
         """
         self.prompts[prompt.id] = prompt
-        self.mcp_client.register_prompt(prompt)
+        await self.mcp_client.register_prompt(prompt)
         self.logger.info(f"Registered prompt: {prompt.id}")
     
     async def render_prompt(
@@ -516,6 +468,6 @@ class TherapyPromptManager:
         )
         
         # Register the prompt
-        self._register_prompt(prompt)
+        await self._register_prompt(prompt)
         
         return prompt 

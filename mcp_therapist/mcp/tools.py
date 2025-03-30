@@ -47,12 +47,14 @@ class InterventionTools:
     
     async def _register_tools(self):
         """Register all intervention tools with the MCP client."""
+        if not self.mcp_client.connected:
+            self.logger.warning("MCP client not connected. Skipping tool registration.")
+            return
+            
         await self.mcp_client.register_tool(
             MCPTool(
-                id="get_intervention_statistics",
-                name="Get Intervention Statistics",
+                name="get_intervention_statistics",
                 description="Get statistics about intervention effectiveness by strategy and rut type",
-                function=self.get_intervention_statistics,
                 parameters={
                     "type": "object",
                     "properties": {
@@ -67,32 +69,14 @@ class InterventionTools:
                     },
                     "required": []
                 },
-                return_schema={
-                    "type": "object",
-                    "properties": {
-                        "by_strategy": {
-                            "type": "object",
-                            "description": "Statistics broken down by strategy"
-                        },
-                        "by_rut_type": {
-                            "type": "object", 
-                            "description": "Statistics broken down by rut type"
-                        },
-                        "overall": {
-                            "type": "object",
-                            "description": "Overall statistics"
-                        }
-                    }
-                }
+                handler=self.get_intervention_statistics
             )
         )
         
         await self.mcp_client.register_tool(
             MCPTool(
-                id="get_intervention_history",
-                name="Get Intervention History",
+                name="get_intervention_history",
                 description="Get the history of interventions for a conversation",
-                function=self.get_intervention_history,
                 parameters={
                     "type": "object",
                     "properties": {
@@ -107,28 +91,14 @@ class InterventionTools:
                     },
                     "required": ["conversation_id"]
                 },
-                return_schema={
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "string"},
-                            "strategy_type": {"type": "string"},
-                            "rut_type": {"type": "string"},
-                            "timestamp": {"type": "string"},
-                            "success": {"type": "boolean"}
-                        }
-                    }
-                }
+                handler=self.get_intervention_history
             )
         )
         
         await self.mcp_client.register_tool(
             MCPTool(
-                id="create_intervention_plan",
-                name="Create Intervention Plan",
+                name="create_intervention_plan",
                 description="Create a plan for intervening in a conversation",
-                function=self.create_intervention_plan,
                 parameters={
                     "type": "object",
                     "properties": {
@@ -153,26 +123,14 @@ class InterventionTools:
                     },
                     "required": ["conversation_id", "rut_type", "confidence"]
                 },
-                return_schema={
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "string"},
-                        "conversation_id": {"type": "string"},
-                        "rut_type": {"type": "string"},
-                        "strategy_type": {"type": "string"},
-                        "confidence": {"type": "number"},
-                        "timestamp": {"type": "string"}
-                    }
-                }
+                handler=self.create_intervention_plan
             )
         )
         
         await self.mcp_client.register_tool(
             MCPTool(
-                id="evaluate_intervention",
-                name="Evaluate Intervention",
+                name="evaluate_intervention",
                 description="Evaluate the effectiveness of an intervention",
-                function=self.evaluate_intervention, 
                 parameters={
                     "type": "object",
                     "properties": {
@@ -187,17 +145,7 @@ class InterventionTools:
                     },
                     "required": ["conversation_id", "intervention_id"]
                 },
-                return_schema={
-                    "type": "object",
-                    "properties": {
-                        "success": {"type": "boolean"},
-                        "metrics": {
-                            "type": "object",
-                            "description": "Various metrics used for evaluation"
-                        },
-                        "analysis": {"type": "string"}
-                    }
-                }
+                handler=self.evaluate_intervention
             )
         )
     
@@ -420,12 +368,14 @@ class ConversationTools:
     
     async def _register_tools(self):
         """Register all conversation tools with the MCP client."""
+        if not self.mcp_client.connected:
+            self.logger.warning("MCP client not connected. Skipping tool registration.")
+            return
+            
         await self.mcp_client.register_tool(
             MCPTool(
-                id="analyze_conversation_for_ruts",
-                name="Analyze Conversation for Ruts",
-                description="Analyze a conversation to detect conversational ruts",
-                function=self.analyze_conversation_for_ruts,
+                name="analyze_conversation_for_ruts",
+                description="Analyze a conversation for ruts and patterns",
                 parameters={
                     "type": "object",
                     "properties": {
@@ -440,24 +390,14 @@ class ConversationTools:
                     },
                     "required": ["conversation_id"]
                 },
-                return_schema={
-                    "type": "object",
-                    "properties": {
-                        "rut_detected": {"type": "boolean"},
-                        "rut_type": {"type": "string"},
-                        "confidence": {"type": "number"},
-                        "context": {"type": "object"}
-                    }
-                }
+                handler=self.analyze_conversation_for_ruts
             )
         )
         
         await self.mcp_client.register_tool(
             MCPTool(
-                id="get_conversation_summary",
-                name="Get Conversation Summary",
+                name="get_conversation_summary",
                 description="Get a summary of a conversation",
-                function=self.get_conversation_summary,
                 parameters={
                     "type": "object",
                     "properties": {
@@ -468,24 +408,14 @@ class ConversationTools:
                     },
                     "required": ["conversation_id"]
                 },
-                return_schema={
-                    "type": "object",
-                    "properties": {
-                        "summary": {"type": "string"},
-                        "topics": {"type": "array", "items": {"type": "string"}},
-                        "sentiment": {"type": "string"},
-                        "message_count": {"type": "integer"}
-                    }
-                }
+                handler=self.get_conversation_summary
             )
         )
         
         await self.mcp_client.register_tool(
             MCPTool(
-                id="get_conversation_statistics",
-                name="Get Conversation Statistics",
+                name="get_conversation_statistics",
                 description="Get statistics about a conversation",
-                function=self.get_conversation_statistics,
                 parameters={
                     "type": "object",
                     "properties": {
@@ -496,17 +426,7 @@ class ConversationTools:
                     },
                     "required": ["conversation_id"]
                 },
-                return_schema={
-                    "type": "object",
-                    "properties": {
-                        "message_count": {"type": "integer"},
-                        "user_message_count": {"type": "integer"},
-                        "assistant_message_count": {"type": "integer"},
-                        "average_user_message_length": {"type": "number"},
-                        "average_assistant_message_length": {"type": "number"},
-                        "intervention_count": {"type": "integer"}
-                    }
-                }
+                handler=self.get_conversation_statistics
             )
         )
     

@@ -28,6 +28,20 @@ class Message(BaseModel):
     content: str
     timestamp: float = Field(default_factory=lambda: datetime.now().timestamp())
     metadata: Dict[str, Any] = {}
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the message to a dictionary.
+        
+        Returns:
+            Dictionary representation of the message
+        """
+        return {
+            "id": self.id,
+            "role": self.role.value if isinstance(self.role, MessageRole) else self.role,
+            "content": self.content,
+            "timestamp": self.timestamp,
+            "metadata": self.metadata
+        }
 
 
 class RutType(str, Enum):
@@ -40,6 +54,7 @@ class RutType(str, Enum):
     CONTRADICTION = "CONTRADICTION"  # LLM contradicting itself
     HALLUCINATION = "HALLUCINATION"
     TOPIC_FIXATION = "TOPIC_FIXATION"  # Conversation stuck on one topic
+    STUCK_ON_EMOTION = "STUCK_ON_EMOTION"  # User repeatedly focusing on same emotion
     OTHER = "OTHER"
 
 

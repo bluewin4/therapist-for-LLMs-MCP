@@ -22,6 +22,45 @@ from mcp_therapist.models.conversation import (
 )
 from mcp_therapist.utils.logging import logger
 
+# Default mapping of rut types to appropriate intervention strategies
+DEFAULT_STRATEGY_MAP = {
+    RutType.REPETITION: [
+        InterventionStrategy.REFLECTION,
+        InterventionStrategy.PROMPT_REFINEMENT,
+        InterventionStrategy.METACOGNITIVE
+    ],
+    RutType.STAGNATION: [
+        InterventionStrategy.REFRAMING,
+        InterventionStrategy.TOPIC_SWITCH,
+        InterventionStrategy.EXPLORATION
+    ],
+    RutType.REFUSAL: [
+        InterventionStrategy.CLARIFY_CONSTRAINTS,
+        InterventionStrategy.REFRAME_REQUEST,
+        InterventionStrategy.GOAL_REMINDER
+    ],
+    RutType.NEGATIVITY: [
+        InterventionStrategy.POSITIVE_REFRAMING,
+        InterventionStrategy.BROADEN_TOPIC,
+        InterventionStrategy.EXPLORATION
+    ],
+    RutType.CONTRADICTION: [
+        InterventionStrategy.HIGHLIGHT_INCONSISTENCY,
+        InterventionStrategy.REQUEST_CLARIFICATION,
+        InterventionStrategy.METACOGNITIVE
+    ],
+    RutType.TOPIC_FIXATION: [
+        InterventionStrategy.BROADEN_TOPIC,
+        InterventionStrategy.TOPIC_SWITCH,
+        InterventionStrategy.EXPLORATION
+    ],
+    RutType.OTHER: [
+        InterventionStrategy.METACOGNITIVE,
+        InterventionStrategy.GOAL_REMINDER,
+        InterventionStrategy.REFRAMING
+    ]
+}
+
 
 class AdaptiveStrategySelector:
     """
@@ -287,13 +326,42 @@ class AdaptiveStrategySelector:
 class InterventionStrategist:
     """Strategist for selecting appropriate intervention strategies."""
     
-    def __init__(self):
-        """Initialize the intervention strategist."""
+    def __init__(self, 
+                 min_confidence: float = None,
+                 cooldown_minutes: int = None,
+                 strategy_map: Dict[RutType, List[str]] = None,
+                 learning_rate: float = None,
+                 exploration_factor: float = None):
+        """Initialize the intervention strategist.
+        
+        Args:
+            min_confidence: Minimum confidence required for interventions
+            cooldown_minutes: Cooldown period between interventions (in minutes)
+            strategy_map: Mapping from rut types to appropriate strategies
+            learning_rate: Learning rate for strategy efficacy updates
+            exploration_factor: Factor controlling exploration vs. exploitation
+        """
+        # Use the new dataclass-based settings
+        self.min_confidence = min_confidence or settings.interventions.min_confidence
+        self.intervention_cooldown = cooldown_minutes or settings.interventions.cooldown_minutes
+        
+        # Initialize default strategies if not provided
+        if strategy_map is None:
+            self.strategy_map = DEFAULT_STRATEGY_MAP
+        else:
+            self.strategy_map = strategy_map
+        
+        # Initialize learning parameters
+        self.learning_rate = learning_rate or settings.detectors.min_confidence
+        self.exploration_factor = exploration_factor or 0.2
+        
+        # Initialize strategy performance tracker
+        self.strategy_efficacy: Dict[str, Dict[str, float]] = {}
+        
         self.logger = logger
         
         # Configure cooldown settings
-        self.intervention_cooldown = settings.INTERVENTION_COOLDOWN
-        self.max_interventions = settings.MAX_INTERVENTIONS_PER_CONVERSATION
+        self.max_interventions = settings.interventions.max_interventions_per_hour
         
         # Strategy mappings: map rut types to prioritized lists of strategies
         self.strategy_mapping = {
@@ -327,16 +395,16 @@ class InterventionStrategist:
             ]
         }
         
-        # Initialize adaptive strategy selector with settings from config
-        self.adaptive_selector = AdaptiveStrategySelector(
-            learning_rate=settings.STRATEGY_LEARNING_RATE,
-            exploration_factor=settings.STRATEGY_EXPLORATION_FACTOR,
-            algorithm=settings.STRATEGY_SELECTION_ALGORITHM
+        # Initialize adaptive strategy selector
+        self.adaptive_strategy_selector = AdaptiveStrategySelector(
+            learning_rate=0.1,
+            exploration_factor=0.2,
+            algorithm="ucb"
         )
         
         # Register all strategies with the adaptive selector
         for rut_type, strategies in self.strategy_mapping.items():
-            self.adaptive_selector.register_strategies(rut_type, strategies)
+            self.adaptive_strategy_selector.register_strategies(rut_type, strategies)
         
         # Legacy strategy effectiveness tracking
         # Maps strategies to success rates
@@ -386,11 +454,10 @@ class InterventionStrategist:
                 return False
         
         # Consider confidence level in detection result
-        min_confidence = getattr(settings, "MIN_INTERVENTION_CONFIDENCE", 0.7)
-        if detection_result.confidence < min_confidence:
+        if detection_result.confidence < self.min_confidence:
             self.logger.info(
                 f"Confidence too low for intervention: {detection_result.confidence:.2f} < "
-                f"{min_confidence}"
+                f"{self.min_confidence}"
             )
             return False
         
@@ -435,7 +502,7 @@ class InterventionStrategist:
             available_strategies = strategies
         
         # Use adaptive strategy selection
-        selected_strategy = self.adaptive_selector.select_strategy(rut_type, available_strategies)
+        selected_strategy = self.adaptive_strategy_selector.select_strategy(rut_type, available_strategies)
         
         self.logger.info(
             f"Selected strategy {selected_strategy.value} for {rut_type.value} rut "
@@ -547,7 +614,7 @@ class InterventionStrategist:
         self.strategy_success_rates[strategy] = new_rate
         
         # Update adaptive selector
-        self.adaptive_selector.update_stats(rut_type, strategy, was_successful, reward)
+        self.adaptive_strategy_selector.update_stats(rut_type, strategy, was_successful, reward)
         
         self.logger.debug(
             f"Updated success rate for {strategy.value}: {current_rate:.2f} -> {new_rate:.2f} "

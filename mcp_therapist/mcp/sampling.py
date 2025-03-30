@@ -218,7 +218,6 @@ class MCPSamplingManager:
         Returns:
             The sampling result
         """
-        # Convert dictionaries to proper objects if needed
         if isinstance(context, dict):
             context = SamplingContext.from_dict(context)
         
@@ -233,15 +232,36 @@ class MCPSamplingManager:
         
         self.logger.info(f"Sampling text with {parameters.model} model")
         
+        # Prepare prompt from context
+        prompt = context.user_prompt
+        if context.system_prompt:
+            # In a real implementation, this would be handled properly based on the model's format
+            prompt = f"System: {context.system_prompt}\n\nUser: {context.user_prompt}"
+        
+        # Additional parameters
+        params = parameters.to_dict()
+        
+        # Include resource IDs if provided
+        if context.resource_ids and len(context.resource_ids) > 0:
+            params["resource_ids"] = context.resource_ids
+        
         # Use the MCP client to sample text
-        result = await self.mcp_client.sample_text(
-            context=context.to_dict(),
-            parameters=parameters.to_dict()
+        response = await self.mcp_client.sample_llm(
+            prompt=prompt,
+            params=params,
+            visibility="server_only"
         )
         
-        # Convert the result to a SamplingResult object
-        if isinstance(result, dict):
-            return SamplingResult.from_dict(result)
+        # Create a SamplingResult
+        result = SamplingResult(
+            text=response,
+            finish_reason="stop",  # Assuming normal completion
+            usage={
+                "prompt_tokens": len(prompt) // 4,  # Rough estimate
+                "completion_tokens": len(response) // 4,  # Rough estimate
+                "total_tokens": (len(prompt) + len(response)) // 4  # Rough estimate
+            }
+        )
         
         return result
     
@@ -309,18 +329,39 @@ class MCPSamplingManager:
         
         self.logger.info(f"Streaming text sampling with {parameters.model} model")
         
-        # Use the MCP client to stream text
-        full_text = ""
+        # Prepare prompt from context
+        prompt = context.user_prompt
+        if context.system_prompt:
+            # In a real implementation, this would be handled properly based on the model's format
+            prompt = f"System: {context.system_prompt}\n\nUser: {context.user_prompt}"
         
-        # This would be replaced with actual streaming implementation
-        # We're simulating it here with a simple call
-        result = await self.mcp_client.sample_text(
-            context=context.to_dict(),
-            parameters=parameters.to_dict()
+        # Additional parameters
+        params = parameters.to_dict()
+        
+        # Include resource IDs if provided
+        if context.resource_ids and len(context.resource_ids) > 0:
+            params["resource_ids"] = context.resource_ids
+        
+        # Use the MCP client to sample text (non-streaming for now)
+        response = await self.mcp_client.sample_llm(
+            prompt=prompt,
+            params=params,
+            visibility="server_only"
         )
         
         if callback:
-            callback(result.text)
+            callback(response)
+        
+        # Create a SamplingResult
+        result = SamplingResult(
+            text=response,
+            finish_reason="stop",  # Assuming normal completion
+            usage={
+                "prompt_tokens": len(prompt) // 4,  # Rough estimate
+                "completion_tokens": len(response) // 4,  # Rough estimate
+                "total_tokens": (len(prompt) + len(response)) // 4  # Rough estimate
+            }
+        )
         
         return result
     

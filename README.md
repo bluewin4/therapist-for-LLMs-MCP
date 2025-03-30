@@ -23,6 +23,10 @@ mcp_therapist/
 │   ├── prompts.py            # MCP prompt templates
 │   └── sampling.py           # MCP sampling capabilities
 ├── utils/              # Utility functions
+│   ├── caching.py            # Caching utilities
+│   ├── concurrency.py        # Parallel processing utilities
+│   ├── profiling.py          # Performance profiling tools
+│   └── threshold_optimizer.py # Threshold optimization utilities
 ├── config/             # Configuration files
 └── tests/              # Test cases
 ```
@@ -35,6 +39,8 @@ mcp_therapist/
 - Generates and injects therapeutic prompts
 - Evaluates intervention effectiveness
 - MCP integration for enhanced context sharing and tool access
+- Performance optimization with caching and parallel processing
+- Adaptive threshold tuning based on feedback
 
 ### MCP Integration Features
 
@@ -54,7 +60,32 @@ cd mcp_therapist
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your API keys and configuration
 ```
+
+### Environment Variables
+
+MCP Therapist uses environment variables for configuration. You can set these in a `.env` file:
+
+```
+# API Keys
+OPENAI_API_KEY=your_openai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+
+# MCP Configuration
+MCP_SERVER_URL=http://localhost:8000
+MCP_API_KEY=your_mcp_api_key_if_required
+
+# Performance Settings
+ENABLE_PROFILING=false
+ENABLE_CACHING=true
+PARALLEL_PROCESSING=true
+```
+
+Most features work without API keys, but external LLM integrations require the corresponding API keys.
 
 ## Usage
 
@@ -129,6 +160,39 @@ if __name__ == "__main__":
 ```
 
 Check the `examples/` directory for more usage examples.
+
+## Testing
+
+MCP Therapist includes a comprehensive test suite:
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage report
+pytest --cov=mcp_therapist
+
+# Run specific test module
+pytest mcp_therapist/tests/detectors/test_repetition_detector.py
+
+# Run tests with verbose output
+pytest -v
+```
+
+### Creating New Tests
+
+Use the template in `mcp_therapist/tests/template_test.py` as a starting point for new test files.
+
+## Performance Optimization
+
+The system includes several performance optimizations:
+
+1. **Caching**: Embeddings, resources, and prompt templates are cached to avoid redundant computations.
+2. **Parallel Processing**: Detector pipelines can run in parallel for faster analysis.
+3. **Incremental Processing**: Only new messages are processed when analyzing conversations.
+4. **Threshold Optimization**: Detector thresholds are automatically tuned based on performance.
+
+Configure optimization settings in `.env` or the settings file.
 
 ## Contributing
 

@@ -102,25 +102,33 @@ def _create_default_logger() -> logging.Logger:
     Returns:
         Configured logger instance.
     """
-    # Get configuration from settings using direct attribute access
-    log_level_str = settings.LOG_LEVEL
-    log_file = getattr(settings, "LOG_FILE", None)  # Use getattr for optional attributes
-    console = getattr(settings, "LOG_TO_CONSOLE", True)
-    
-    file_log_level_str = getattr(settings, "FILE_LOG_LEVEL", log_level_str)
-    console_log_level_str = getattr(settings, "CONSOLE_LOG_LEVEL", log_level_str)
+    # Get configuration from settings using the new dataclass structure
+    log_level_str = settings.logging.level
+    log_file = settings.logging.file
+    console = settings.logging.console
+    log_format = settings.logging.format
     
     log_level = get_log_level(log_level_str)
-    file_log_level = get_log_level(file_log_level_str)
-    console_log_level = get_log_level(console_log_level_str)
     
     return setup_logger(
         log_level=log_level,
         log_file=log_file,
         console=console,
-        file_log_level=file_log_level,
-        console_log_level=console_log_level
+        log_format=log_format
     )
+
+
+# Get logger for a specific module
+def get_logger(module_name: str) -> logging.Logger:
+    """Get a logger for a specific module.
+    
+    Args:
+        module_name: Name of the module
+        
+    Returns:
+        Logger for the specified module
+    """
+    return logging.getLogger(f"mcp_therapist.{module_name}")
 
 
 # Export the default logger
